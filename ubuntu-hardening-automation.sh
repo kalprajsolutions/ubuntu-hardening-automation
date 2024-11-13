@@ -1,15 +1,5 @@
 #!/bin/bash
 
-# Check if the ROOT_PASSWORD environment variable is set
-if [ -z "$ROOT_PASSWORD" ]; then
-  echo "Error: ROOT_PASSWORD is required. Please provide it as an environment variable."
-  exit 1
-fi
-
-# Change the root password
-echo "Changing root password..."
-echo "root:$ROOT_PASSWORD" | sudo chpasswd
-
 # Enable automatic updates with unattended-upgrades and install Fail2Ban and Cockpit in a single update
 echo "Updating system, enabling automatic updates, and installing necessary packages..."
 sudo apt update && sudo apt install -y unattended-upgrades fail2ban -t "$(source /etc/os-release && echo ${VERSION_CODENAME}-backports)" cockpit
