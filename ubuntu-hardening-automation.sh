@@ -1,8 +1,18 @@
 #!/bin/bash
 
-# Prompt for the root password
-read -s -p "Please enter a new root password: " root_password
-echo  # Newline for clarity
+# Prompt for the root password and ensure the script waits for input
+while true; do
+    read -s -p "Please enter a new root password: " root_password
+    echo
+    read -s -p "Confirm the new root password: " root_password_confirm
+    echo
+    if [ "$root_password" == "$root_password_confirm" ]; then
+        echo "Password confirmed."
+        break
+    else
+        echo "Passwords do not match. Please try again."
+    fi
+done
 
 # Change the root password
 echo "Changing root password..."
