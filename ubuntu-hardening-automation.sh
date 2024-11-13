@@ -1,9 +1,13 @@
 #!/bin/bash
 
-# Prompt for the root password with input confirmation
+# Prompt for the root password with input confirmation and ensure it’s non-empty
 while true; do
     read -s -p "Please enter a new root password: " root_password
     echo
+    if [ -z "$root_password" ]; then
+        echo "Password cannot be empty. Please try again."
+        continue
+    fi
     read -s -p "Confirm the new root password: " root_password_confirm
     echo
     if [ "$root_password" == "$root_password_confirm" ]; then
