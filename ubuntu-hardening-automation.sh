@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Prompt for the root password and ensure the script waits for input
+# Prompt for the root password with input confirmation
 while true; do
     read -s -p "Please enter a new root password: " root_password
     echo
@@ -16,25 +16,29 @@ done
 
 # Change the root password
 echo "Changing root password..."
-echo "root:$root_password" | sudo chpasswd
+echo "root:$root_password" | sudo chpasswd || { echo "Failed to change root password"; exit 1; }
 
-# Enable automatic updates with unattended-upgrades and install Fail2Ban and Cockpit in a single update
+# Update system and install packages in one command
 echo "Updating system, enabling automatic updates, and installing necessary packages..."
-sudo apt update && sudo apt install -y unattended-upgrades fail2ban -t "$(source /etc/os-release && echo ${VERSION_CODENAME}-backports)" cockpit
+sudo apt update -y && \
+sudo apt install -y unattended-upgrades fail2ban cockpit || { echo "Package installation failed"; exit 1; }
 
-# Configure unattended upgrades
-sudo dpkg-reconfigure --priority=low unattended-upgrades
+# Enable unattended upgrades with no user interaction
+sudo dpkg-reconfigure unattended-upgrades || { echo "Failed to configure unattended-upgrades"; exit 1; }
 
-# Change the SSH port to 6969 and configure the firewall
-echo "Configuring SSH on port 6969, setting up firewall rules, and restarting SSH service..."
-sudo sed -i 's/^#Port 22/Port 6969/' /etc/ssh/sshd_config
-sudo systemctl restart sshd
-sudo ufw allow 6969/tcp   # Allow SSH on port 6969
-sudo ufw allow 9090/tcp   # Allow Cockpit on port 9090
-sudo ufw --force enable   # Enable UFW without prompt
+# Configure SSH to use port 6969, and restart SSH service
+echo "Configuring SSH on port 6969..."
+sudo sed -i '/^#Port 22/c\Port 6969' /etc/ssh/sshd_config
+sudo systemctl restart sshd || { echo "Failed to restart SSH"; exit 1; }
+
+# Configure UFW to allow new SSH and Cockpit ports, enabling it without prompt
+echo "Configuring firewall rules..."
+sudo ufw allow 6969/tcp    # Allow SSH on port 6969
+sudo ufw allow 9090/tcp    # Allow Cockpit on port 9090
+sudo ufw --force enable || { echo "Failed to enable UFW"; exit 1; }
 
 # Configure Fail2Ban for SSH on custom port 6969
-echo "Setting up Fail2Ban to monitor SSH on port 6969..."
+echo "Configuring Fail2Ban for SSH on port 6969..."
 sudo tee /etc/fail2ban/jail.d/custom-ssh.conf > /dev/null <<EOL
 [sshd]
 enabled = true
@@ -44,7 +48,7 @@ logpath = /var/log/auth.log
 maxretry = 5
 EOL
 
-# Restart Fail2Ban to apply the configuration
-sudo systemctl enable --now fail2ban
+# Restart and enable Fail2Ban to apply the configuration
+sudo systemctl enable --now fail2ban || { echo "Failed to enable Fail2Ban"; exit 1; }
 
 echo "Setup completed successfully."
