@@ -1,28 +1,14 @@
 #!/bin/bash
 
-# Parse the command-line argument for password
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --password=*) # Match --password=VALUE
-      root_password="${1#*=}"
-      shift
-      ;;
-    *)
-      echo "Invalid argument: $1"
-      exit 1
-      ;;
-  esac
-done
-
-# Check if the password variable is set
-if [ -z "$root_password" ]; then
-  echo "Error: Password is required. Please provide it as --password=YourPassword."
+# Check if the ROOT_PASSWORD environment variable is set
+if [ -z "$ROOT_PASSWORD" ]; then
+  echo "Error: ROOT_PASSWORD is required. Please provide it as an environment variable."
   exit 1
 fi
 
 # Change the root password
 echo "Changing root password..."
-echo "root:$root_password" | sudo chpasswd
+echo "root:$ROOT_PASSWORD" | sudo chpasswd
 
 # Enable automatic updates with unattended-upgrades and install Fail2Ban and Cockpit in a single update
 echo "Updating system, enabling automatic updates, and installing necessary packages..."
