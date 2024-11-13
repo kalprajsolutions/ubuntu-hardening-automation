@@ -17,7 +17,6 @@ sudo sed -i 's/^#Port 22/Port 6969/' /etc/ssh/sshd_config
 sudo systemctl restart sshd
 sudo ufw allow 6969/tcp   # Allow SSH on port 6969
 sudo ufw allow 9090/tcp   # Allow Cockpit on port 9090
-sudo ufw --force enable   # Enable UFW without prompt
 
 # Configure Fail2Ban for SSH on custom port 6969
 echo "Setting up Fail2Ban to monitor SSH on port 6969..."
