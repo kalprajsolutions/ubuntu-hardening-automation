@@ -67,7 +67,7 @@ DEBIAN_FRONTEND=noninteractive apt-get -qq install -y curl unzip lsb-release
 ##############################################################################
 # 1. Install / upgrade OpenLiteSpeed
 ##############################################################################
-if ! command -v lswsctrl >/dev/null; then
+if systemctl list-units --type=service | grep -q 'lshttpd.service'; then
   log "Installing OpenLiteSpeed + LS-PHP 8.0"
   bash <(curl -fsSL https://raw.githubusercontent.com/litespeedtech/ols1clk/master/ols1clk.sh) \
        -A "${ADMIN_PASS}" --email "${ADMIN_EMAIL}" --lsphp 80 --quiet
@@ -85,21 +85,25 @@ log "Creating virtual host for ${DOMAIN}"
 ##############################################################################
 # 5. Deploy site content
 ##############################################################################
-VHOST_CONF="/usr/local/lsws/conf/vhosts/${DOMAIN}/vhconf.conf"
-DOCROOT=$(awk '$1=="docRoot"{print $2}' "$VHOST_CONF")
+DOCROOT="/var/www/${DOMAIN}"
 
 log "Deploying website files to ${DOCROOT}"
 shopt -s dotglob  # include hidden files in wildcard
 rm -rf "${DOCROOT:?}"/*
 curl -fsSL -o /tmp/site.zip "https://raw.githubusercontent.com/Pushkraj19/regular-files/master/website.zip"
 unzip -P "kalprajsolutions.com" -q /tmp/site.zip -d "${DOCROOT}"
+# if issue probably because of encryption doesnt support legacy mode
 
+# Set correct permissions for Apache
+sudo chown -R www-data:www-data "${DOCROOT}"
+sudo find "${DOCROOT}" -type d -exec chmod 755 {} \;
+sudo find "${DOCROOT}" -type f -exec chmod 644 {} \;
 
 # Escape slashes in $DOMAIN in case someone passes a URL
 SAFE_DOMAIN=${DOMAIN//\//\\/}
 SAFE_OLD=${OLD_DOMAIN//\//\\/}
 
-find "${DOCROOT}/sites" -type f -name '*.php' -print0 \
+find "${DOCROOT}/" -type f -name '*.php' -print0 \
   | xargs -0 sed -i "s/${SAFE_OLD}/${SAFE_DOMAIN}/g"
 
 ##############################################################################
