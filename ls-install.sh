@@ -98,8 +98,8 @@ rm -rf /tmp/site.zip
 
 # Set correct permissions for Apache
 sudo chown -R www-data:www-data "${DOCROOT}"
-sudo find "/var/www/racknerd-202.kalprajsolutions.net" -type d -exec chmod 755 {} \;
-sudo find "/var/www/racknerd-202.kalprajsolutions.net" -type f -exec chmod 644 {} \;
+sudo find "${DOCROOT}" -type d -exec chmod 755 {} \;
+sudo find "${DOCROOT}" -type f -exec chmod 644 {} \;
 
 
 log "Updating files in ${DOCROOT}..."
