@@ -1,28 +1,85 @@
-#!/bin/bash
+#!/usr/bin/env bash
+###############################################################################
+# Ubuntu (22.04 +) hardening with a strict UFW policy
+# – Automatic security updates
+# – SSH on custom port (6969) + root/password auth allowed
+# – Fail2Ban
+# – Only essential service ports opened; everything else denied
+###############################################################################
+set -Eeuo pipefail
+IFS=$'\n\t'
 
-# Enable automatic updates with unattended-upgrades and install Fail2Ban and Cockpit in a single update
-echo "Updating system, enabling automatic updates, and installing necessary packages..."
-sudo apt update && sudo apt install -y unattended-upgrades fail2ban -t "$(source /etc/os-release && echo ${VERSION_CODENAME}-backports)" cockpit
+##### ─────────────── CONFIGURABLE VARIABLES ─────────────── #####
+SSH_PORT=6969             # Custom SSH port
+ALLOW_ROOT_SSH="yes"      # PermitRootLogin (yes|no)
+ALLOW_PASSWORD_AUTH="yes" # PasswordAuthentication (yes|no)
+F2B_MAXRETRY=5            # Fail2Ban retry limit
 
-# Change the SSH port to 6969 and configure the firewall
-echo "Configuring SSH on port 6969, setting up firewall rules, and restarting SSH service..."
-sudo sed -i 's/^#Port 22/Port 6969/' /etc/ssh/sshd_config
-sudo systemctl restart sshd
-sudo ufw allow 6969/tcp   # Allow SSH on port 6969
-sudo ufw allow 9090/tcp   # Allow Cockpit on port 9090
+# List of TCP ports that must remain open
+# (Add or remove ports as needed, separated by spaces)
+ALLOWED_TCP_PORTS=(
+  80     # HTTP
+  20     # FTP-DATA (ftp servers often also need 21 – add if required)
+  22     # Default SSH (keep if another host/device still connects on 22)
+  25     # SMTP
+  443    # HTTPS
+  7080   # Custom / reverse-proxy
+  6969   # Custom SSH
+  83     # DNS?
+)
+#################################################################
 
-# Configure Fail2Ban for SSH on custom port 6969
-echo "Setting up Fail2Ban to monitor SSH on port 6969..."
-sudo tee /etc/fail2ban/jail.d/custom-ssh.conf > /dev/null <<EOL
+[[ $EUID -eq 0 ]] || { echo "Run as root (sudo)"; exit 1; }
+
+echo "1️⃣  Updating system & installing base packages ..."
+apt-get update -qq
+apt-get -y dist-upgrade
+apt-get -y install --no-install-recommends \
+    ufw fail2ban unattended-upgrades cron
+
+echo "2️⃣  Enabling unattended security upgrades ..."
+cat >/etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade   "1";
+APT::Periodic::AutocleanInterval    "7";
+EOF
+dpkg-reconfigure --frontend=noninteractive unattended-upgrades
+
+echo "3️⃣  Hardening SSH (port $SSH_PORT) ..."
+sed -ri \
+  -e "s/^#?Port .*/Port ${SSH_PORT}/" \
+  -e "s/^#?PermitRootLogin .*/PermitRootLogin ${ALLOW_ROOT_SSH}/" \
+  -e "s/^#?PasswordAuthentication .*/PasswordAuthentication ${ALLOW_PASSWORD_AUTH}/" \
+  /etc/ssh/sshd_config
+systemctl reload sshd
+
+echo "4️⃣  Configuring a strict UFW firewall ..."
+ufw --force reset               # start from a clean slate
+ufw default deny incoming
+ufw default allow outgoing
+
+for p in "${ALLOWED_TCP_PORTS[@]}"; do
+  ufw allow "${p}/tcp" comment "open port ${p}"
+done
+
+ufw --force enable
+echo "   ➜ Allowed TCP ports: ${ALLOWED_TCP_PORTS[*]}"
+
+echo "5️⃣  Setting up Fail2Ban ..."
+cat >/etc/fail2ban/jail.d/sshd-local.conf <<EOF
 [sshd]
-enabled = true
-port = 6969
-filter = sshd
-logpath = /var/log/auth.log
-maxretry = 5
-EOL
+enabled   = true
+port      = ${SSH_PORT}
+logpath   = %(sshd_log)s
+maxretry  = ${F2B_MAXRETRY}
+bantime   = 1h
+findtime  = 15m
+EOF
+systemctl enable --now fail2ban
 
-# Restart Fail2Ban to apply the configuration
-sudo systemctl enable --now fail2ban
+echo "6️⃣  Basic kernel/network hardening ..."
+timedatectl set-ntp true
+printf "net.ipv4.conf.all.accept_redirects=0\nnet.ipv6.conf.all.accept_redirects=0\nkernel.randomize_va_space=2\n" >/etc/sysctl.d/99-hardening.conf
+sysctl --system >/dev/null
 
-echo "Setup completed successfully."
+echo -e "\n✅  Hardened with strict firewall.\nOpen ports: ${ALLOWED_TCP_PORTS[*]}"
