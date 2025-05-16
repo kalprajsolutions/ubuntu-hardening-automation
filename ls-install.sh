@@ -139,6 +139,33 @@ if ! /usr/local/lsws/bin/lswsctrl reload; then
   /usr/local/lsws/bin/lswsctrl restart
 fi
 
+log "Clean default blank site"
+TARGET_DIR="/usr/local/lsws/Example/html"
+# Remove all files and directories inside the target directory
+rm -rf "${TARGET_DIR:?}/"*
+
+# Create index.php with 404 response and blank body
+cat << 'EOF' > "${TARGET_DIR}/index.php"
+<?php
+http_response_code(404);
+exit();
+EOF
+
+log "Adding Created domain Vhost to SSL"
+
+CONF=/usr/local/lsws/conf/httpd_config.conf
+
+log " → Injecting map line for $DOMAIN → $DOMAIN"
+sudo perl -0777 -i -pe "
+  s|listener\\s+Defaultssl\\s*\\{.*?\\}|
+listener Defaultssl {
+  address                 *:443
+  secure                  1
+  keyFile                 /usr/local/lsws/conf/example.key
+  certFile                /usr/local/lsws/conf/example.crt
+  map 					  ${DOMAIN} ${DOMAIN}
+}|s" "$CONF"
+
 ##############################################################################
 # 7. Recap
 ##############################################################################
@@ -146,7 +173,7 @@ cat <<EOF
 
 =======================================================================
  ✔  ${DOMAIN} is live
- ✔  Admin GUI locked to https://127.0.0.1:7080
+ ✔  Admin GUI locked to https://127.0.0.1:7080 | Use SSH Tunnel to access it.
  ✔  Admin credentials:
         user: admin
         pass: ${ADMIN_PASS}
