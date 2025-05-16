@@ -37,6 +37,7 @@ ADMIN_EMAIL="pushkraj@kalprajsolutions.com"
 ADMIN_PASS=""
 POSITIONAL=()
 OLD_DOMAIN="rknrd-218.kalprajsolutions.net" 
+ZIP_FILE_PASS="kalprajsolutions.com"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -91,21 +92,25 @@ log "Deploying website files to ${DOCROOT}"
 shopt -s dotglob  # include hidden files in wildcard
 rm -rf "${DOCROOT:?}"/*
 curl -fsSL -o /tmp/site.zip "https://raw.githubusercontent.com/Pushkraj19/regular-files/master/website.zip"
-unzip -P "kalprajsolutions.com" -q /tmp/site.zip -d "${DOCROOT}"
+unzip -P "${ZIP_FILE_PASS}" -q /tmp/site.zip -d "${DOCROOT}"
 # if issue probably because of encryption doesnt support legacy mode
+rm -rf /tmp/site.zip
 
 # Set correct permissions for Apache
 sudo chown -R www-data:www-data "${DOCROOT}"
-sudo find "${DOCROOT}" -type d -exec chmod 755 {} \;
-sudo find "${DOCROOT}" -type f -exec chmod 644 {} \;
+sudo find "/var/www/racknerd-202.kalprajsolutions.net" -type d -exec chmod 755 {} \;
+sudo find "/var/www/racknerd-202.kalprajsolutions.net" -type f -exec chmod 644 {} \;
 
-# Escape slashes in $DOMAIN in case someone passes a URL
-SAFE_DOMAIN=${DOMAIN//\//\\/}
-SAFE_OLD=${OLD_DOMAIN//\//\\/}
 
-find "${DOCROOT}/" -type f -name '*.php' -print0 \
-  | xargs -0 sed -i "s/${SAFE_OLD}/${SAFE_DOMAIN}/g"
+log "Updating files in ${DOCROOT}..."
 
+# Find all regular files (skip binaries and device files)
+find "$DOCROOT" -type f -exec grep -Iq . {} \; -and -exec sed -i "s|$OLD_DOMAIN|$DOMAIN|g" {} +
+
+log "✅ Replacement complete."
+
+
+log "Locking admin panel."
 ##############################################################################
 # 2. Secure admin panel to localhost
 ##############################################################################
@@ -119,12 +124,12 @@ update_or_add "$ADMIN_CONF" 'address' 'address                  127.0.0.1:7080'
 HTTPD_CONF=/usr/local/lsws/conf/httpd_config.conf
 log "Applying global tweaks"
 
-update_or_add "$HTTPD_CONF" 'adminEmails'    "adminEmails              ${ADMIN_EMAIL}"
-update_or_add "$HTTPD_CONF" 'maxConns'       'maxConns                 100'           # inside wsgiDefaults
+update_or_add "$HTTPD_CONF" 'adminEmails'    "adminEmails             ${ADMIN_EMAIL}"
+update_or_add "$HTTPD_CONF" 'maxConns'       'maxConns                100'           # inside wsgiDefaults
 update_or_add "$HTTPD_CONF" 'quicEnable'     'quicEnable              1'
-update_or_add "$HTTPD_CONF" 'quicShmDir'     'quicShmDir /dev/shm'
-update_or_add "$HTTPD_CONF" 'indexFiles'     'indexFiles           index.html, index.php'
-update_or_add "$HTTPD_CONF" 'autoIndex'      'autoIndex             0'
+update_or_add "$HTTPD_CONF" 'quicShmDir'     'quicShmDir			  /dev/shm'
+update_or_add "$HTTPD_CONF" 'indexFiles'     'indexFiles           	  index.html, index.php'
+update_or_add "$HTTPD_CONF" 'autoIndex'      'autoIndex               0'
 
 ##############################################################################
 # 6. Reload OLS
