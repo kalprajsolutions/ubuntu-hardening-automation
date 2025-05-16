@@ -68,7 +68,7 @@ DEBIAN_FRONTEND=noninteractive apt-get -qq install -y curl unzip lsb-release
 ##############################################################################
 # 1. Install / upgrade OpenLiteSpeed
 ##############################################################################
-if systemctl list-units --type=service | grep -q 'lshttpd.service'; then
+if [ ! -d /usr/local/lsws/conf/httpd_config.conf ]; then
   log "Installing OpenLiteSpeed + LS-PHP 8.0"
   bash <(curl -fsSL https://raw.githubusercontent.com/litespeedtech/ols1clk/master/ols1clk.sh) \
        -A "${ADMIN_PASS}" --email "${ADMIN_EMAIL}" --lsphp 80 --quiet
