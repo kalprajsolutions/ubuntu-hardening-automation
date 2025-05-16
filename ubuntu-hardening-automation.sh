@@ -94,4 +94,7 @@ kernel.randomize_va_space          = 2
 EOF
 sysctl --system >/dev/null
 
+echo "Change TImezone to Asia Kolkata"
+timedatectl set-timezone Asia/Kolkata
+
 echo -e "\n✅  Hardened, IPv6 disabled. Inbound IPv4 ports open: ${ALLOWED_TCP_PORTS[*]}"
