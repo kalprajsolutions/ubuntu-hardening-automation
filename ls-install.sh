@@ -76,26 +76,6 @@ else
 fi
 
 ##############################################################################
-# 2. Secure admin panel to localhost
-##############################################################################
-ADMIN_CONF=/usr/local/lsws/admin/conf/admin_config.conf
-log "Locking admin panel to 127.0.0.1:7080"
-update_or_add "$ADMIN_CONF" 'address' 'address                  127.0.0.1:7080'
-
-##############################################################################
-# 3. Global server tuning
-##############################################################################
-HTTPD_CONF=/usr/local/lsws/conf/httpd_config.conf
-log "Applying global tweaks"
-
-update_or_add "$HTTPD_CONF" 'adminEmails'    "adminEmails              ${ADMIN_EMAIL}"
-update_or_add "$HTTPD_CONF" 'maxConns'       'maxConns                 100'           # inside wsgiDefaults
-update_or_add "$HTTPD_CONF" 'quicEnable'     'quicEnable              1'
-update_or_add "$HTTPD_CONF" 'quicShmDir'     'quicShmDir /dev/shm'
-update_or_add "$HTTPD_CONF" 'indexFiles'     'indexFiles           index.html, index.php'
-update_or_add "$HTTPD_CONF" 'autoIndex'      'autoIndex             0'
-
-##############################################################################
 # 4. Create / refresh virtual host
 ##############################################################################
 log "Creating virtual host for ${DOMAIN}"
@@ -122,6 +102,25 @@ SAFE_OLD=${OLD_DOMAIN//\//\\/}
 find "${DOCROOT}/sites" -type f -name '*.php' -print0 \
   | xargs -0 sed -i "s/${SAFE_OLD}/${SAFE_DOMAIN}/g"
 
+##############################################################################
+# 2. Secure admin panel to localhost
+##############################################################################
+ADMIN_CONF=/usr/local/lsws/admin/conf/admin_config.conf
+log "Locking admin panel to 127.0.0.1:7080"
+update_or_add "$ADMIN_CONF" 'address' 'address                  127.0.0.1:7080'
+
+##############################################################################
+# 3. Global server tuning
+##############################################################################
+HTTPD_CONF=/usr/local/lsws/conf/httpd_config.conf
+log "Applying global tweaks"
+
+update_or_add "$HTTPD_CONF" 'adminEmails'    "adminEmails              ${ADMIN_EMAIL}"
+update_or_add "$HTTPD_CONF" 'maxConns'       'maxConns                 100'           # inside wsgiDefaults
+update_or_add "$HTTPD_CONF" 'quicEnable'     'quicEnable              1'
+update_or_add "$HTTPD_CONF" 'quicShmDir'     'quicShmDir /dev/shm'
+update_or_add "$HTTPD_CONF" 'indexFiles'     'indexFiles           index.html, index.php'
+update_or_add "$HTTPD_CONF" 'autoIndex'      'autoIndex             0'
 
 ##############################################################################
 # 6. Reload OLS
