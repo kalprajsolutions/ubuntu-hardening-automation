@@ -71,7 +71,7 @@ DEBIAN_FRONTEND=noninteractive apt-get -qq install -y curl unzip lsb-release
 if [ ! -f /usr/local/lsws/conf/httpd_config.conf ]; then
   log "Installing OpenLiteSpeed + LS-PHP 8.0"
   bash <(curl -fsSL https://raw.githubusercontent.com/litespeedtech/ols1clk/master/ols1clk.sh) \
-       -A "${ADMIN_PASS}" --email "${ADMIN_EMAIL}" --lsphp 80 --quiet
+       -A "${ADMIN_PASS}" --email "${ADMIN_EMAIL}" --lsphp 81 --quiet
 else
   log "OpenLiteSpeed already present – skipping base install"
 fi
